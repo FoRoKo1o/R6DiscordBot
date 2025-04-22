@@ -14,7 +14,7 @@ const appId = process.env.APP_ID;
 // Rejestracja komend
 const commands = [
     new SlashCommandBuilder()
-        .setName('stalker')
+        .setName('kacpiansuj')
         .setDescription('Kacpians moment'),
     new SlashCommandBuilder()
         .setName('dodaj')
@@ -137,7 +137,7 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.commandName === 'instrukcja') {
         const embed = new EmbedBuilder()
             .setTitle("Jak zostać stalkerem?")
-            .setDescription("Klepnij /stalker")
+            .setDescription("Klepnij /kacpiansuj")
             .addFields(
                 {
                 name: "/dodaj",
@@ -146,7 +146,7 @@ client.on('interactionCreate', async (interaction) => {
                 },
                 {
                 name: "/usun",
-                value: "1. wpisujesz nick i się usuwa.\n2. WAŻNE: wielkośc liter ma znaczenie",
+                value: "1. wpisujesz nick \n2. Naduś ENTER i się usuwa.\n3. WAŻNE: wielkośc liter ma znaczenie",
                 inline: false
                 },
                 {
@@ -183,7 +183,7 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    if (interaction.commandName === 'stalker') {
+    if (interaction.commandName === 'kacpiansuj') {
         try {
             // Potwierdzenie interakcji
             await interaction.deferReply();
