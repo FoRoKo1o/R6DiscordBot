@@ -8,6 +8,7 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 const token = process.env.DISCORD_TOKEN;
+const appId = process.env.APP_ID;
 
 // Rejestracja komend
 const commands = [
@@ -43,7 +44,7 @@ const rest = new REST({ version: '10' }).setToken(token);
     try {
         console.log('Rejestracja komend aplikacji...');
         await rest.put(
-            Routes.applicationCommands('1364165159567753247'),
+            Routes.applicationCommands(appId),
             { body: commands }
         );
         console.log('Pomyślnie zarejestrowano komendy.');
