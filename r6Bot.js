@@ -13,7 +13,7 @@ const token = process.env.DISCORD_TOKEN;
 const commands = [
     new SlashCommandBuilder()
         .setName('stalker')
-        .setDescription('Wyświetla statystyki graczy z nicknames.json'),
+        .setDescription('Kacpians moment'),
     new SlashCommandBuilder()
         .setName('dodaj')
         .setDescription('Dodaje nowego gracza do listy')
@@ -31,7 +31,10 @@ const commands = [
         .addStringOption(option =>
             option.setName('nickname')
                 .setDescription('Nickname gracza')
-                .setRequired(true))
+                .setRequired(true)),
+    new SlashCommandBuilder()
+    .setName('instrukcja')
+    .setDescription('Dla debila :)'),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);
@@ -113,6 +116,31 @@ client.on('interactionCreate', async (interaction) => {
             console.error(error);
             await interaction.reply('Wystąpił błąd podczas dodawania gracza.');
         }
+    }
+    if (interaction.commandName === 'instrukcja') {
+        const embed = new EmbedBuilder()
+            .setTitle("Jak zostać stalkerem?")
+            .setDescription("Klepnij /stalker")
+            .addFields(
+                {
+                name: "/dodaj",
+                value: "1. Wchodzisz tutaj https://stats.cc/pl/siege\n2. Szukasz grajka, tak o normalnie\n3. Jak znajdziesz to kopiujesz to co w URL\n4. Klepiesz /dodaj i uzupełniasz\n5. Prościej się nie da",
+                inline: false
+                },
+                {
+                name: "/usun",
+                value: "1. wpisujesz nick i się usuwa.\n2. WAŻNE: wielkośc liter ma znaczenie",
+                inline: false
+                },
+                {
+                name: "/instrukcja",
+                value: "Wyświetla tą wiadomość",
+                inline: false
+                },
+            )
+            .setColor("#00f529");
+
+        await interaction.reply({ embeds: [embed] });
     }
 
     if (interaction.commandName === 'usun') {
