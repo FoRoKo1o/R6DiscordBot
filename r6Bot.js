@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuild
 const fs = require('fs');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const http = require('http'); // Import modułu HTTP
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -55,6 +56,21 @@ const rest = new REST({ version: '10' }).setToken(token);
 
 client.on('ready', () => {
     console.log(`Zalogowano jako ${client.user.tag}`);
+});
+
+// Dodanie mini serwera HTTP
+const server = http.createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('Bot działa poprawnie!');
+    } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Nie znaleziono strony.');
+    }
+});
+
+server.listen(3000, () => {
+    console.log('Serwer HTTP działa na porcie 3000');
 });
 
 // Funkcja scrapująca dane gracza
