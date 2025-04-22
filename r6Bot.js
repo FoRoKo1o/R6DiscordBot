@@ -168,6 +168,9 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.commandName === 'stalker') {
         try {
+            // Potwierdzenie interakcji
+            await interaction.deferReply();
+
             const players = JSON.parse(fs.readFileSync('nicknames.json', 'utf-8'));
             const embeds = [];
 
@@ -183,7 +186,6 @@ client.on('interactionCreate', async (interaction) => {
                         ? `${Math.floor((currentDate - lastCheckedDate) / (1000 * 60 * 60))} godzin temu`
                         : 'Nigdy';
 
-                    // Ustawienie koloru na podstawie zmiany RP
                     let embedColor = '#0099ff'; // Domyślnie niebieski
                     if (rpChange > 0) {
                         embedColor = '#00ff00'; // Zielony
@@ -191,13 +193,11 @@ client.on('interactionCreate', async (interaction) => {
                         embedColor = '#ff0000'; // Czerwony
                     }
 
-                    // Aktualizacja danych gracza
                     player.lastPlayed = stats.lastPlayed;
                     player.rankName = stats.rankName;
                     player.rp = stats.rp;
                     player.lastChecked = currentDate.toISOString();
 
-                    // Tworzenie embeda
                     const embed = new EmbedBuilder()
                         .setColor(embedColor)
                         .setTitle(`Statystyki gracza: ${player.nickname}`)
@@ -216,18 +216,16 @@ client.on('interactionCreate', async (interaction) => {
                 }
             }
 
-            // Zapisz zaktualizowane dane do pliku JSON
             fs.writeFileSync('nicknames.json', JSON.stringify(players, null, 4), 'utf-8');
 
-            // Wyślij embedy na czat
             if (embeds.length > 0) {
-                await interaction.reply({ embeds });
+                await interaction.editReply({ embeds });
             } else {
-                await interaction.reply('Nie udało się pobrać danych dla żadnego gracza.');
+                await interaction.editReply('Nie udało się pobrać danych dla żadnego gracza.');
             }
         } catch (error) {
             console.error(error);
-            await interaction.reply('Wystąpił błąd podczas pobierania danych.');
+            await interaction.editReply('Wystąpił błąd podczas pobierania danych.');
         }
     }
 });
