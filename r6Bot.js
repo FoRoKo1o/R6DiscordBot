@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuild
 const fs = require('fs');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { exec } = require('child_process');
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -53,32 +54,60 @@ client.on('ready', () => {
     console.log(`Zalogowano jako ${client.user.tag}`);
 });
 
-// Funkcja scrapująca dane gracza
-async function getPlayerStats(nicknameWithId) {
-    try {
-        const url = `https://stats.cc/pl/siege/${nicknameWithId}`;
-        const response = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+// Funkcja scrapująca dane gracza za pomocą curl
+async function getPlayerStatsWithCurl(nickname) {
+    return new Promise((resolve, reject) => {
+        const url = `https://r6.tracker.network/r6siege/profile/ubi/7ead0857-ae2b-4eeb-b733-c9da04a057cb/overview`;
+        const command = `curl -A "Mozilla/5.0" "${url}"`;
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                const errorMessage = `Błąd podczas uruchamiania curl: ${error.message}`;
+                console.error(errorMessage);
+                fs.appendFileSync('output1.txt', `${errorMessage}\n`);
+                reject(error);
+                return;
+            }
+
+            if (stderr && !stdout) {
+                const stderrMessage = `Błąd curl: ${stderr}`;
+                console.error(stderrMessage);
+                fs.appendFileSync('output1.txt', `${stderrMessage}\n`);
+                reject(stderr);
+                return;
+            }
+
+            // Zapis pełnej odpowiedzi do pliku
+            fs.appendFileSync('output1.txt', `${stdout}`);
+
+            const $ = cheerio.load(stdout);
+
+            try {
+                // Wyciąganie pierwszej sekcji v3-card__body
+                const cardBody = $('.v3-card.season-card').first();
+                const cardBodyHtml = cardBody.html(); // Pobranie zawartości HTML sekcji
+
+                console.log(`Zawartość pierwszej sekcji v3-card__body dla ${nickname}:`);
+                console.log(cardBodyHtml);
+
+                // Parsowanie zawartości cardBodyHtml
+                const $$ = cheerio.load(cardBodyHtml);
+
+                // Wyciąganie rank-points
+                const rankPoints = $$('.rank-points').text().trim();
+
+                resolve({
+                    nickname,
+                    rankPoints
+                });
+            } catch (parseError) {
+                const parseErrorMessage = `Błąd podczas parsowania danych: ${parseError.message}`;
+                console.error(parseErrorMessage);
+                fs.appendFileSync('output1.txt', `${parseErrorMessage}\n`);
+                reject(parseError);
             }
         });
-        const $ = cheerio.load(response.data);
-
-        // Wyciąganie danych
-        const lastPlayed = $('section[aria-labelledby="Ostatnio grane"] span.text-xs.text-contrast-500').text().trim();
-        const rankName = $('section[aria-labelledby="Bieżący sezon"] div.text-contrast-100.font-500').text().trim();
-        const rp = $('section[aria-labelledby="Bieżący sezon"] div.text-primary-100.text-size-base').text().trim();
-
-        return {
-            nicknameWithId,
-            lastPlayed,
-            rankName,
-            rp
-        };
-    } catch (error) {
-        console.error(`Błąd podczas scrapowania danych dla gracza ${nicknameWithId}:`, error);
-        return null;
-    }
+    });
 }
 
 client.on('interactionCreate', async (interaction) => {
@@ -144,13 +173,13 @@ client.on('interactionCreate', async (interaction) => {
             const embeds = [];
 
             for (const player of players) {
-                const nicknameWithId = `${player.nickname}/${player.id}`;
-                const stats = await getPlayerStats(nicknameWithId);
+                const nickname = `${player.nickname}`;
+                const stats = await getPlayerStatsWithCurl(nickname);
 
                 if (stats) {
                     const lastCheckedDate = player.lastChecked ? new Date(player.lastChecked) : null;
                     const currentDate = new Date();
-                    const rpChange = player.rp ? parseInt(stats.rp.replace(/,/g, '')) - parseInt(player.rp.replace(/,/g, '')) : null;
+                    const rpChange = player.rp ? parseInt(stats.rankPoints.replace(/,/g, '')) - parseInt(player.rp.replace(/,/g, '')) : null;
                     const timeSinceLastCheck = lastCheckedDate
                         ? `${Math.floor((currentDate - lastCheckedDate) / (1000 * 60 * 60))} godzin temu`
                         : 'Nigdy';
@@ -164,9 +193,8 @@ client.on('interactionCreate', async (interaction) => {
                     }
 
                     // Aktualizacja danych gracza
-                    player.lastPlayed = stats.lastPlayed;
                     player.rankName = stats.rankName;
-                    player.rp = stats.rp;
+                    player.rp = stats.rankPoints;
                     player.lastChecked = currentDate.toISOString();
 
                     // Tworzenie embeda
@@ -174,9 +202,8 @@ client.on('interactionCreate', async (interaction) => {
                         .setColor(embedColor)
                         .setTitle(`Statystyki gracza: ${player.nickname}`)
                         .addFields(
-                            { name: 'Ostatnio grane', value: stats.lastPlayed || 'Brak danych', inline: true },
                             { name: 'Ranga', value: stats.rankName || 'Brak danych', inline: true },
-                            { name: 'RP', value: stats.rp || 'Brak danych', inline: true },
+                            { name: 'Punkty', value: stats.rankPoints || 'Brak danych', inline: true },
                             { name: 'Zmiana RP', value: rpChange !== null ? `${rpChange > 0 ? '+' : ''}${rpChange} RP` : 'Brak danych', inline: true },
                             { name: 'Czas od ostatniego sprawdzenia', value: timeSinceLastCheck, inline: true }
                         )
@@ -184,7 +211,7 @@ client.on('interactionCreate', async (interaction) => {
 
                     embeds.push(embed);
                 } else {
-                    console.log(`Nie udało się pobrać danych dla ${nicknameWithId}`);
+                    console.log(`Nie udało się pobrać danych dla ${nickname}`);
                 }
             }
 
